@@ -1,9 +1,15 @@
-const socket = io('http://localhost:3000');
+// const socket = io('http://192.168.1.100:3000');
+// const socket = io('http://localhost:3000');
+const socket = io('http://vp-sync-staging.herokuapp.com/');
 
 // let's assume that the client page, once rendered, knows what room it wants to join
 const guid = 'abc123_guid2';
 const token = 'abc123_token2';
-const entityId = 'abc123_entityId';
+const entityId = 'b9bcf91f-bd42-3f84-973b-98534146daeb';
+
+socket.on('disconnect', () => {
+  mainStatus.innerHTML = `<span style="color:red">Disconnected</span>`;
+});
 
 socket.on('connect', () => {
   console.log('connect done');
@@ -11,14 +17,8 @@ socket.on('connect', () => {
   socket.emit('register', {
     entityId, token, guid,
   });
-
-  // this code can be run when the client going online after being offline or for full sync
-  setTimeout(() => {
-    // hey server please send all data I do no have
-    socket.emit('syncRequest', {
-      table: 'all', entityId, token, guid,
-    });
-  }, 3000);
+  // you can always check your room under URL/api/v1/stats/all-online
+  mainStatus.innerHTML = `<span style="color:green">Connected</span>`;
 });
 
 socket.on('pushActivity', (data, callback) => {
@@ -31,24 +31,50 @@ socket.on('pushActivity', (data, callback) => {
 // in case of error
 socket.on('error', (evData) => {
   console.error('Connection Error:', evData);
+  mainStatus.innerHTML = `<span style="color:red">ERROR</span>`;
 });
 
 socket.on('syncReply', (data, callback) => {
-  console.log(`syncReply done: ${data.table}`);
-  console.log('Socket (server-side): date to be saved in my local db:', data);
-  const records = [];
-  data.records.forEach((element) => {
-    records.push(element.id);
+  var dbObj = openDatabase(Database_Name, Version, Text_Description, Database_Size);
+  dbObj.transaction(function (tx) {
+    console.log(`syncReply done: ${data.table}`);
+    console.log('Socket (server-side): date to be saved in my local db:', data);
+    const records = [];
+    data.records.forEach((element) => {
+      console.log('element', JSON.stringify(element));
+      tx.executeSql(`insert into visits
+          (id, user_id, host_id, entity_id, scan_data_type_id, notes, date, signed_in, signed_out, deleted_at , created_at, updated_at)
+          values
+          (
+            '${element.id}',
+            '${element.user_id}',
+            '${element.host_id}',
+            '${element.entity_id}',
+            '${element.scan_data_type_id}',
+
+            '${element.notes}',
+            '${element.date}',
+
+            '${element.signed_in}',
+            '${element.signed_out}',
+
+            '${element.deleted_at}',
+            '${element.created_at}',
+            '${element.updated_at}'
+          )`);
+      console.log('data added');
+      records.push(element.id);
+    });
+    if (records.length === 0) {
+      alert('No new records')
+    } else {
+      console.log('please mark this data as synced:', records);
+      callback(records);
+      loadDbToGrid()
+    }
   });
-  console.log('please mark this data as synced:', records);
-  callback(records);
 });
 
 
-var sampleData = [
-    { ProductID: 1, ProductName: "Apple iPhone 5s", Introduced: new Date(2013, 8, 10), UnitPrice: 525, Discontinued: false, UnitsInStock: 10 },
-    { ProductID: 2, ProductName: "HTC One M8", Introduced: new Date(2014, 2, 25), UnitPrice: 425, Discontinued: false, UnitsInStock: 3 },
-    { ProductID: 3, ProductName: "Nokia 5880", Introduced: new Date(2008, 10, 2), UnitPrice: 275, Discontinued: true, UnitsInStock: 0 }
-];
 
 

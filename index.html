@@ -60,7 +60,20 @@
   <main role="main" class="flex-shrink-0">
     <section>
       <h1 style="text-align: center;" class="game--title">VP5 Sync Demo</h1>
+      <h5 style="text-align: center;" class="game--title"> Socket Status: <span id="mainStatus"> <span style="color:red">Disconnected</span></span></h5>
+      <h5 style="text-align: center;" class="game--title"><span style="color:red" id="mainCounter">0</span> Records in DB visits table</h5>
+      <h5 style="text-align: center;" class="game--title">(<span style="color:red" id="mainCounter2">0</span> all / <span style="color:red" id="mainCounter3">0</span> not synced)  Records in DB Trans</h5>
+
       <div id="example" style="margin: 50px 50px;">
+        <button type="button" onclick="dropDb()" class="btn btn-primary">Drop Local RDB</button>
+        <button type="button" onclick="recreateDb()" class="btn btn-primary">Recreate Local DB with Full Sync</button>
+        <button type="button" onclick="halfSyncDb()" class="btn btn-primary">Do Half Sync (after offline)</button>
+
+        <button style="float: right; margin:  0px 10px;" type="button" onclick="dropTransDb()" class="btn btn-primary">Drop Trans DB</button>
+        <button style="float: right;" type="button" onclick="doPutActivity()" class="btn btn-primary">Do Put Activity</button>
+
+        <br/>
+        <br/>
         <div id="grid"></div>
       </div>
     </section>
