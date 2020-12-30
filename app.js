@@ -22,6 +22,7 @@ app.all('/', (request, response, next) => {
 });
 //add the router
 app.use('/', router);
-app.listen(process.env.port || 9000);
-
-console.log('Running at Port 9000');
+const port = process.env.PORT || 9000;
+const server = app.listen(port, () => {
+  console.log(`Application is running on port ${port}`);
+});
