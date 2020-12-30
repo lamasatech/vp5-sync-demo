@@ -1,6 +1,6 @@
 // const socket = io('http://192.168.1.100:3000');
 // const socket = io('http://localhost:3000');
-const socket = io('http://vp-sync-staging.herokuapp.com/');
+const socket = io('https://vp-sync-staging.herokuapp.com/');
 
 // let's assume that the client page, once rendered, knows what room it wants to join
 const guid = 'abc123_guid2';
