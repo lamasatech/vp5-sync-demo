@@ -5,7 +5,7 @@ const socket = io('https://vp-sync-staging.herokuapp.com/');
 // let's assume that the client page, once rendered, knows what room it wants to join
 const guid = 'abc123_guid2';
 const token = 'abc123_token2';
-const entityId = 'b9bcf91f-bd42-3f84-973b-98534146daeb';
+const entityId = 'f757ca2c-0bdd-3a2d-8a5e-775a9b96b426';
 
 socket.on('disconnect', () => {
   mainStatus.innerHTML = `<span style="color:red">Disconnected</span>`;

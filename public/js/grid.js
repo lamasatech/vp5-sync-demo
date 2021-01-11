@@ -1,3 +1,4 @@
+let mainData = [];
 function getIndexById(id) {
     var idx,
         l = mainData.length;
@@ -103,7 +104,7 @@ function drawGrid(mainData) {
                             )`);
 
                         alert('Added to both RDB and TransDB')
-                        loadDbToGrid()
+                       // loadDbToGrid()
                     });
                 });
                 // On failure.
@@ -111,17 +112,119 @@ function drawGrid(mainData) {
             },
             update: function (e) {
                 // Locate item in original datasource and update it.
+                const dataBefore = JSON.stringify(mainData[getIndexById(e.data.id)]); 
                 mainData[getIndexById(e.data.id)] = e.data;
                 // On success.
                 e.success();
+                var dbObj = openDatabase(Database_Name_Trans, Version, Text_Description, Database_Size);
+               dbObj.transaction(function (tx) {
+                    const sql = `insert into trans
+                    (
+                        id,
+                        changedProperties,
+                        isSync,
+                        syncTo,
+                        recordId,
+                        tableName,
+                        transactionType,
+                        dataBefore,
+                        dataAfter,
+                        changeSource,
+                        creationTime,
+                        entityId
+                    )
+                    values
+                    (
+                        '${newGuid()}',
+                        'part',
+                        'no',
+                        '${guid}',
+                        '${e.data.id}',
+                        'visits',
+                        'update',
+                        '${dataBefore}',                
+                        '${JSON.stringify(e.data)}', 
+                        '${guid}',
+                        '${(new Date()).toISOString()}',
+                        '${e.data.entity_id}'
+                    )`
+
+                  
+
+                    console.log('sqlsqlsqlsql', JSON.stringify(sql));
+                    tx.executeSql(sql);
+                    var dbObj2 = openDatabase(Database_Name, Version, Text_Description, Database_Size);
+                    dbObj2.transaction(function (tx2) {
+                        tx2.executeSql(`UPDATE visits
+                            SET user_id ='${e.data.user_id}',
+                                host_id = '${e.data.host_id}',
+                                entity_id = '${e.data.entity_id}',
+                                scan_data_type_id = '${e.data.scan_data_type_id}',
+                                notes = '${e.data.notes}',
+                                date = '${e.data.date}',
+                                signed_in = '${e.data.signed_in}',
+                                signed_out = '${e.data.signed_out}',
+                                deleted_at = '${e.data.deleted_at}',
+                                created_at = '${e.data.created_at}',
+                                updated_at = '${e.data.updated_at}'
+                            WHERE id = ${e.data.id}`);
+
+                        alert('update at RDB and Added to  TransDB')
+                        //loadDbToGrid()
+                    });
+                });
                 // On failure.
                 // e.error("XHR response", "status code", "error message");
             },
             destroy: function (e) {
+                const dataBefore = JSON.stringify(mainData[getIndexById(e.data.id)]); 
                 // Locate item in original datasource and remove it.
                 mainData.splice(getIndexById(e.data.id), 1);
                 // On success.
                 e.success();
+                var dbObj = openDatabase(Database_Name_Trans, Version, Text_Description, Database_Size);
+                dbObj.transaction(function (tx) {
+                     const sql = `insert into trans
+                     (
+                         id,
+                         changedProperties,
+                         isSync,
+                         syncTo,
+                         recordId,
+                         tableName,
+                         transactionType,
+                         dataBefore,
+                         changeSource,
+                         creationTime,
+                         entityId
+                     )
+                     values
+                     (
+                         '${newGuid()}',
+                         'all',
+                         'no',
+                         '${guid}',
+                         '${e.data.id}',
+                         'visits',
+                         'delete',
+                         '${dataBefore}',                
+                         '${guid}',
+                         '${(new Date()).toISOString()}',
+                         '${e.data.entity_id}'
+                     )`
+ 
+                   
+ 
+                     console.log('sqlsqlsqlsql', JSON.stringify(sql));
+                     tx.executeSql(sql);
+                     var dbObj2 = openDatabase(Database_Name, Version, Text_Description, Database_Size);
+                     dbObj2.transaction(function (tx2) {
+                         tx2.executeSql(`DELETE FROM  visits WHERE id = ${e.data.id}`);
+ 
+                         alert('delete at RDB and Added to  TransDB')
+                         //loadDbToGrid()
+                     });
+                 });
                 // On failure.
                 // e.error("XHR response", "status code", "error message");
             }
@@ -152,7 +255,7 @@ function drawGrid(mainData) {
             }
         }
     });
-
+    
     $("#grid").kendoGrid({
         dataSource: dataSource,
         pageable: true,
@@ -212,40 +315,64 @@ function doPutActivity() {
             console.log('trans len', JSON.stringify(len));
             for (i = 0; i < len; i++) {
 
+                let beforeDataRecord, mainDataRecord ;
+                if(results.rows.item(i).dataAfter) {
+                    mainDataRecord = JSON.parse(results.rows.item(i).dataAfter);
 
-                const mainDataRecord = JSON.parse(results.rows.item(i).dataAfter);
+                    let date = new Date(mainDataRecord.date);
+                    mainDataRecord.date = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
 
-                let date = new Date(mainDataRecord.date);
-                mainDataRecord.date = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
+                    date = new Date(mainDataRecord.signed_out);
+                    mainDataRecord.signed_out = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
 
-                date = new Date(mainDataRecord.signed_out);
-                mainDataRecord.signed_out = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
+                    var d = new Date(mainDataRecord.signed_in);
+                    mainDataRecord.signed_in = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
 
-                var d = new Date(mainDataRecord.signed_in);
-                mainDataRecord.signed_in = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+                    d = new Date(mainDataRecord.signed_out);
+                    mainDataRecord.signed_out = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
 
-                d = new Date(mainDataRecord.signed_out);
-                mainDataRecord.signed_out = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+                    d = new Date(mainDataRecord.created_at);
+                    mainDataRecord.created_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
 
-                d = new Date(mainDataRecord.created_at);
-                mainDataRecord.created_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+                    d = new Date(mainDataRecord.updated_at);
+                    mainDataRecord.updated_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
 
-                d = new Date(mainDataRecord.updated_at);
-                mainDataRecord.updated_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+                    d = new Date(mainDataRecord.deleted_at);
+                    mainDataRecord.deleted_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+                    }
+                if(results.rows.item(i).dataBefore) {
+                    beforeDataRecord = JSON.parse(results.rows.item(i).dataBefore);
+                    let date = new Date(beforeDataRecord.date);
 
+                    beforeDataRecord.date = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
 
-                d = new Date(mainDataRecord.deleted_at);
-                mainDataRecord.deleted_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+                    date = new Date(beforeDataRecord.signed_out);
+                    beforeDataRecord.signed_out = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
 
+                    var d = new Date(beforeDataRecord.signed_in);
+                    beforeDataRecord.signed_in = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
 
+                    d = new Date(beforeDataRecord.signed_out);
+                    beforeDataRecord.signed_out = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+
+                    d = new Date(beforeDataRecord.created_at);
+                    beforeDataRecord.created_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+
+                    d = new Date(beforeDataRecord.updated_at);
+                    beforeDataRecord.updated_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+
+                    d = new Date(beforeDataRecord.deleted_at);
+                    beforeDataRecord.deleted_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+
+                }
                 payLoad.push({
                     "_id": results.rows.item(i).id,
                     "recordId": results.rows.item(i).recordId,
                     "tableName": results.rows.item(i).tableName,
                     "transactionType": results.rows.item(i).transactionType,
-                    "dataBefore": {},
+                    "dataBefore": beforeDataRecord?beforeDataRecord:{},
                     "dataAfter": mainDataRecord,
-                    "changedProperties": Object.keys(mainDataRecord),
+                    "changedProperties": Object.keys(mainDataRecord || beforeDataRecord),
                     "changeSource": results.rows.item(i).changeSource,
                     "creationTime": results.rows.item(i).creationTime,
                     "syncTo": [
@@ -291,11 +418,12 @@ function loadDbToGrid() {
     drawGrid([]);
     var dbObj = openDatabase(Database_Name, Version, Text_Description, Database_Size);
     dbObj.transaction(function (tx) {
-        let mainData = [];
+        
         tx.executeSql('SELECT * from visits', [], function (tx, results) {
             var len = results.rows.length, i;
             mainCounter.innerHTML = len;
             console.log('len', JSON.stringify(len));
+            mainData = [];
             for (i = 0; i < len; i++) {
                 mainData.push(results.rows.item(i));
             }
@@ -334,6 +462,7 @@ $(document).ready(function () {
             "recordId",
             "tableName",
             "transactionType",
+            "dataBefore",
             "dataAfter",
             "changeSource",
             "creationTime",
