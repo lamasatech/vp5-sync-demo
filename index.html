@@ -58,20 +58,72 @@
 
   <!-- Begin page content -->
   <main role="main" class="flex-shrink-0">
+   
+
     <section>
       <h1 style="text-align: center;" class="game--title">VP5 Sync Demo</h1>
       <h5 style="text-align: center;" class="game--title"> Socket Status: <span id="mainStatus"> <span style="color:red">Disconnected</span></span></h5>
       <h5 style="text-align: center;" class="game--title"><span style="color:red" id="mainCounter">0</span> Records in DB visits table</h5>
+      <h5 style="text-align: center;" class="game--title"><span style="color:red" id="pushNotify">No transactions</span> in server database</h5>
       <h5 style="text-align: center;" class="game--title">(<span style="color:red" id="mainCounter2">0</span> all / <span style="color:red" id="mainCounter3">0</span> not synced)  Records in DB Trans</h5>
+    
+    
+      <div id="example"  style="margin: 50px 600px;">
+      <label>GUID</label><input id='guidTXT' type="text"></input>
+      <label>TOKEN</label><input id='tokenTXT'  type="text"></input>
+      <label>entityId</label><input id='entityIdTXT'  type="text"></input>
+      <button type="button" onclick="setup($('#guidTXT').val(),$('#tokenTXT').val(),$('#entityIdTXT').val())" class="btn btn-primary">Setup</button>
+      </div>
+    <div id="example"  style="margin: 50px 750px;">
+    <label>Table Name</label>
+    <select id='tableNameDDL'>
+    <option id="admin_preference">admin_preference</option>
+    <option id="areas">areas</option>
+    <option id="compliances">compliances</option>
+    <option id="compliance_users">compliance_users</option>
+    <option id="department">department</option>
+    <option id="entities">entities</option>
+    <option id="entity_user">entity_user</option>
+    <option id="import_users">import_users</option>
+    <option id="import_users_data">import_users_data</option>
+    <option id="import_user_pivot">import_user_pivot</option>
+    <option id="input_methods">input_methods</option>
+    <option id="jobs_history">jobs_history</option>
+    <option id="journeys">journeys</option>
+    <option id="journey_flows">journey_flows</option>
+    <option id="journey_flow_compliances">journey_flow_compliances</option>
+    <option id="journey_flow_setting">journey_flow_setting</option>
+    <option id="journey_flow_user_type">	journey_flow_user_type</option>
+    <option id="journey_setting">	journey_setting</option>
+    <option id="kiosks">kiosks</option>
+    <option id="kiosk_serials">kiosk_serials</option>
+    <option id="kiosk_setting">kiosk_setting</option>
+    <option id="migrations">migrations</option>
+    <option id="oauth_access_tokens">oauth_access_tokens</option>
+    <option id="oauth_auth_codes">oauth_auth_codes</option>
+    <option id="oauth_clients">oauth_clients</option>
+    <option id="oauth_personal_access_clients">oauth_personal_access_clients</option>
+    <option id="oauth_refresh_tokens">oauth_refresh_tokens</option>
+    <option id="roles">roles</option>
+    <option id="scans">scans</option>
+    <option id="scan_data_types">scan_data_types</option>
+    <option id="settings">settings</option>
+    <option id="sites">sites</option>
+    <option id="users">users</option>
+    <option id="user_types">user_types</option>
+    <option id="user_type_setting">user_type_setting</option>
+    <option id="visits">visits</option>
+    </select>
+    </div>
+ 
 
       <div id="example" style="margin: 50px 50px;">
-        <button type="button" onclick="dropDb()" class="btn btn-primary">Drop Local RDB</button>
-        <button type="button" onclick="recreateDb()" class="btn btn-primary">Recreate Local DB with Full Sync</button>
-        <button type="button" onclick="halfSyncDb()" class="btn btn-primary">Do Half Sync (after offline)</button>
+        <button type="button" onclick="dropDb(document.getElementById('tableNameDDL').value)" class="btn btn-primary">Drop Local RDB</button>
+        <button type="button" onclick="recreateDb(document.getElementById('tableNameDDL').value)" class="btn btn-primary">Recreate Local DB with Full Sync</button>
+        <button type="button" onclick="halfSyncDb(document.getElementById('tableNameDDL').value)" class="btn btn-primary">Do Half Sync (after offline)</button>
 
         <button style="float: right; margin:  0px 10px;" type="button" onclick="dropTransDb()" class="btn btn-primary">Drop Trans DB</button>
         <button style="float: right;" type="button" onclick="doPutActivity()" class="btn btn-primary">Do Put Activity</button>
-
         <br/>
         <br/>
         <div id="grid"></div>

@@ -1,4 +1,6 @@
 let mainData = [];
+let isDateField =[];
+
 function getIndexById(id) {
     var idx,
         l = mainData.length;
@@ -39,7 +41,84 @@ var newGuid = function () {
     return result;
 };
 
+function generateColumns(columnNames){
+    if(columnNames)
+    {
+        return columnNames.map(function(name){
+            return { field: name, format: (isDateField[name] ? "{0:D}" : "") };
+          })
+    }
+   
+}
+  
+function generateModel(columnNames) {
+
+    var sampleDataItem = columnNames;
+
+    var model = {};
+    var fields = {};
+    for (var property in sampleDataItem) {
+      if(property.indexOf("ID") !== -1){
+        model["id"] = property;
+      }
+      var propType = typeof sampleDataItem[property];
+
+      if (propType === "number" ) {
+        fields[property] = {
+          type: "number",
+          validation: {
+            required: true
+          }
+        };
+        if(model.id === property){
+          fields[property].editable = false;
+          fields[property].validation.required = false;
+        }
+      } else if (propType === "boolean") {
+        fields[property] = {
+          type: "boolean"
+        };
+      } else if (propType === "string") {
+        var parsedDate = kendo.parseDate(sampleDataItem[property]);
+        if (parsedDate) {
+          fields[property] = {
+            type: "date",
+            validation: {
+              required: true
+            }
+          };
+          isDateField[property] = true;
+        } else {
+          fields[property] = {
+            validation: {
+              required: true
+            }
+          };
+        }
+      } else {
+        fields[property] = {
+          validation: {
+            required: true
+          }
+        };
+      }
+    }
+
+    model.fields = fields;
+
+    return model;
+}
+
 function drawGrid(mainData) {
+    let schemaField={};
+    let schemaColumn = [];
+
+    if(mainData.length>0) {
+        schemaField = generateModel(mainData[0]);
+        schemaColumn = generateColumns(Object.keys(mainData[0]));
+        console.log(`schemaField${JSON.stringify(schemaField)}`)
+    }
+    
     var mainDataNextID = mainData.length + 1;
     var dataSource = new kendo.data.DataSource({
         transport: {
@@ -82,26 +161,10 @@ function drawGrid(mainData) {
                     tx.executeSql(sql);
                     var dbObj2 = openDatabase(Database_Name, Version, Text_Description, Database_Size);
                     dbObj2.transaction(function (tx2) {
-                        tx2.executeSql(`insert into visits
-                            (id, user_id, host_id, entity_id, scan_data_type_id, notes, date, signed_in, signed_out, deleted_at , created_at, updated_at)
+                        tx2.executeSql(`insert into ${document.getElementById('tableNameDDL').value}
+                            (${Object.keys(e.data).map((s) => s).join(',')})
                             values
-                            (
-                                '${e.data.id}',
-                                '${e.data.user_id}',
-                                '${e.data.host_id}',
-                                '${e.data.entity_id}',
-                                '${e.data.scan_data_type_id}',
-
-                                '${e.data.notes}',
-                                '${e.data.date}',
-
-                                '${e.data.signed_in}',
-                                '${e.data.signed_out}',
-
-                                '${e.data.deleted_at}',
-                                '${e.data.created_at}',
-                                '${e.data.updated_at}'
-                            )`);
+                            ('${Object.values(e.data).map((s) => s).join("','")}')`);
 
                         alert('Added to both RDB and TransDB')
                        // loadDbToGrid()
@@ -148,29 +211,21 @@ function drawGrid(mainData) {
                         '${(new Date()).toISOString()}',
                         '${e.data.entity_id}'
                     )`
-
-                  
-
                     console.log('sqlsqlsqlsql', JSON.stringify(sql));
                     tx.executeSql(sql);
                     var dbObj2 = openDatabase(Database_Name, Version, Text_Description, Database_Size);
                     dbObj2.transaction(function (tx2) {
-                        tx2.executeSql(`UPDATE visits
-                            SET user_id ='${e.data.user_id}',
-                                host_id = '${e.data.host_id}',
-                                entity_id = '${e.data.entity_id}',
-                                scan_data_type_id = '${e.data.scan_data_type_id}',
-                                notes = '${e.data.notes}',
-                                date = '${e.data.date}',
-                                signed_in = '${e.data.signed_in}',
-                                signed_out = '${e.data.signed_out}',
-                                deleted_at = '${e.data.deleted_at}',
-                                created_at = '${e.data.created_at}',
-                                updated_at = '${e.data.updated_at}'
-                            WHERE id = ${e.data.id}`);
+                        const columnUpdates = [];
+                        for (const [key, value] of Object.entries(e.data)) {
+                            columnUpdates.push(`${key}='${value}'`)
+                        }
+                        columnUpdates.shift();
+
+                        tx2.executeSql(`UPDATE ${document.getElementById('tableNameDDL').value}
+                            SET ${columnUpdates.join(',')}
+                            WHERE id = '${e.data.id}'`);
 
                         alert('update at RDB and Added to  TransDB')
-                        //loadDbToGrid()
                     });
                 });
                 // On failure.
@@ -212,15 +267,11 @@ function drawGrid(mainData) {
                          '${(new Date()).toISOString()}',
                          '${e.data.entity_id}'
                      )`
- 
-                   
- 
                      console.log('sqlsqlsqlsql', JSON.stringify(sql));
                      tx.executeSql(sql);
                      var dbObj2 = openDatabase(Database_Name, Version, Text_Description, Database_Size);
                      dbObj2.transaction(function (tx2) {
-                         tx2.executeSql(`DELETE FROM  visits WHERE id = ${e.data.id}`);
- 
+                         tx2.executeSql(`DELETE FROM  ${document.getElementById('tableNameDDL').value} WHERE id = '${e.data.id}'`);
                          alert('delete at RDB and Added to  TransDB')
                          //loadDbToGrid()
                      });
@@ -238,43 +289,16 @@ function drawGrid(mainData) {
         schema: {
             model: {
                 id: "id",
-                fields: {
-                    id: { editable: false, nullable: true },
-                    user_id: { validation: { required: false } },
-                    host_id: { validation: { required: false } },
-                    entity_id: { validation: { required: false } },
-                    scan_data_type_id: { validation: { required: false } },
-                    date: { type: "date" },
-                    notes: { validation: { required: false } },
-                    signed_in: { type: "date" },
-                    signed_out: { type: "date" },
-                    created_at: { type: "date" },
-                    updated_at: { type: "date" },
-                    deleted_at: { type: "date" },
-                }
+                fields: schemaField,
             }
         }
     });
-    
+    $("#grid").empty();
     $("#grid").kendoGrid({
         dataSource: dataSource,
         pageable: true,
         toolbar: ["create"],
-        columns: [
-            { field: "id" },
-            { field: "user_id" },
-            { field: "host_id" },
-            { field: "entity_id" },
-            { field: "scan_data_type_id" },
-            { field: "date", title: "date", format: "{0:yyyy/MM/dd}" },
-            { field: "notes", title: "notes" },
-            { field: "signed_in", title: "signed_in", format: "{0:yyyy/MM/dd hh:mm:ss}" },
-            { field: "signed_out", title: "signed_out", format: "{0:yyyy/MM/dd hh:mm:ss}" },
-            { field: "created_at", title: "created_at", format: "{0:yyyy/MM/dd hh:mm:ss}" },
-            { field: "updated_at", title: "updated_at", format: "{0:yyyy/MM/dd hh:mm:ss}" },
-            { field: "deleted_at", title: "deleted_at", format: "{0:yyyy/MM/dd hh:mm:ss}" },
-            { command: ["edit", "destroy"], title: "&nbsp;" },
-        ],
+        columns: schemaColumn,
         editable: "inline"
     });
 }
@@ -288,18 +312,19 @@ function dropTransDb() {
     });
 }
 
-function dropDb() {
+function dropDb(tableName) {
+    console.log(`drop table ${tableName}`)
     var dbObj = openDatabase(Database_Name, Version, Text_Description, Database_Size);
     dbObj.transaction(function (tx) {
-        tx.executeSql(`drop TABLE IF EXISTS visits`);
+        tx.executeSql(`drop TABLE IF EXISTS ${tableName}`);
         alert('Db is dropped')
         loadDbToGrid();
     });
 }
 
-function halfSyncDb() {
+function halfSyncDb(tableName) {
     socket.emit('syncRequest', {
-        table: 'visits', entityId, token, guid,
+        table: `${tableName}`, entityId, token, guid,
         syncType: 'half',
     });
 }
@@ -400,15 +425,11 @@ function doPutActivity() {
 
 }
 
-function recreateDb() {
-    dropDb()
-    var dbObj = openDatabase(Database_Name, Version, Text_Description, Database_Size);
-    dbObj.transaction(function (tx) {
-        tx.executeSql(`CREATE TABLE IF NOT EXISTS visits (id unique, user_id, host_id,entity_id, scan_data_type_id, notes, date, signed_in, signed_out,
-                deleted_at , created_at, updated_at)`);
-    });
+ function recreateDb(tableName) {
+    dropDb(tableName)
+    // loadDbToGrid()
     socket.emit('syncRequest', {
-        table: 'visits', entityId, token, guid,
+        table: `${tableName}`, entityId, token, guid,
         syncType: 'full',
     });
 }
@@ -419,7 +440,7 @@ function loadDbToGrid() {
     var dbObj = openDatabase(Database_Name, Version, Text_Description, Database_Size);
     dbObj.transaction(function (tx) {
         
-        tx.executeSql('SELECT * from visits', [], function (tx, results) {
+        tx.executeSql(`SELECT * from ${document.getElementById('tableNameDDL').value}`, [], function (tx, results) {
             var len = results.rows.length, i;
             mainCounter.innerHTML = len;
             console.log('len', JSON.stringify(len));
@@ -430,6 +451,7 @@ function loadDbToGrid() {
             console.log('mainData');
             console.log(mainData);
             drawGrid(mainData)
+
             var dbObj2 = openDatabase(Database_Name_Trans, Version, Text_Description, Database_Size);
             dbObj2.transaction(function (tx) {
                 let mainData = [];
@@ -449,7 +471,16 @@ function loadDbToGrid() {
 
 
 }
-
+function pushNotifyToolbar(tableName,transactionName) {
+    pushNotify.innerHTML = '';
+    if(transactionName === 'insert'){
+        pushNotify.innerHTML = `record added in ${tableName}s`
+    }else if(transactionName === 'update') {
+        pushNotify.innerHTML = `record updated in ${tableName}`
+    }else if(transactionName === 'delete') {
+        pushNotify.innerHTML = `record deleted in ${tableName}`
+    }
+}
 $(document).ready(function () {
     loadDbToGrid();
     var dbObj = openDatabase(Database_Name_Trans, Version, Text_Description, Database_Size);
@@ -475,7 +506,4 @@ var Database_Name = 'vp5';
 var Version = 1.0;
 var Text_Description = 'Vp5 Web-SQL';
 var Database_Size = 2 * 1024 * 1024;
-
-
-
 var Database_Name_Trans = 'vp5_trans';
