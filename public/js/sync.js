@@ -18,8 +18,8 @@ function setup(guidParam,tokenParam,entityIdParam){
 // const entityId = '24a74cec-0b4a-3a69-8418-8ebdce386034';
 
 // const socket = io('http://192.168.1.100:3000');
-socket = io('http://localhost:3000');
-// const socket = io('https://vp-sync-staging.herokuapp.com/');
+// socket = io('http://localhost:3000');
+socket = io('https://vp-sync-staging.herokuapp.com/');
 
 socket.on('disconnect', () => {
   mainStatus.innerHTML = `<span style="color:red">Disconnected</span>`;
