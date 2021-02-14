@@ -1,12 +1,12 @@
 let mainData = [];
 let isDateField =[];
 
-function getIndexById(id) {
+function getIndexById(rowid) {
     var idx,
         l = mainData.length;
 
     for (var j = 0; j < l; j++) {
-        if (mainData[j].id == id) {
+        if (mainData[j].rowid == rowid) {
             return j;
         }
     }
@@ -44,9 +44,13 @@ var newGuid = function () {
 function generateColumns(columnNames){
     if(columnNames)
     {
-        return columnNames.map(function(name){
-            return { field: name, format: (isDateField[name] ? "{0:D}" : "") };
+         let col=[];
+          columnNames.map(function(name){
+            col.push({ field: name, format: (isDateField[name] ? "{0:D}" : "") });
           })
+          
+        col.push({ command: ["edit","destroy"] });
+          return col;
     }
    
 }
@@ -58,16 +62,16 @@ function generateModel(columnNames) {
     var model = {};
     var fields = {};
     for (var property in sampleDataItem) {
-      if(property.indexOf("ID") !== -1){
-        model["id"] = property;
-      }
+       if(property.indexOf("id") !== -1){
+         model["id"] = property;
+       }
       var propType = typeof sampleDataItem[property];
 
       if (propType === "number" ) {
         fields[property] = {
           type: "number",
           validation: {
-            required: true
+            required: false
           }
         };
         if(model.id === property){
@@ -84,41 +88,99 @@ function generateModel(columnNames) {
           fields[property] = {
             type: "date",
             validation: {
-              required: true
+              required: false
             }
           };
           isDateField[property] = true;
         } else {
           fields[property] = {
             validation: {
-              required: true
+              required: false
             }
           };
         }
       } else {
         fields[property] = {
           validation: {
-            required: true
+            required: false
           }
         };
       }
     }
 
+    if(document.getElementById('tableNameDDL').value !== 'compliance_users'
+    && document.getElementById('tableNameDDL').value !== 'kiosk_setting'
+    && document.getElementById('tableNameDDL').value !== 'journey_flow_compliances'
+    && document.getElementById('tableNameDDL').value !== 'journey_flow_setting'
+    && document.getElementById('tableNameDDL').value !== 'journey_flow_user_type'
+    && document.getElementById('tableNameDDL').value !== 'journey_setting'
+    && document.getElementById('tableNameDDL').value !== 'user_type_setting'
+    && document.getElementById('tableNameDDL').value !== 'entity_user'
+    ) {
+        model.id = "id";
+     }
+    
     model.fields = fields;
-
     return model;
+}
+
+function getRecordId(transTableName,recordObj) {
+    let transRecordId={};
+  try {
+    if (transTableName === 'kiosk_setting') {
+        transRecordId.kiosk_id = recordObj.kiosk_id;
+        transRecordId.setting_id = recordObj.setting_id;
+        // transRecordId = `${recordObj.kiosk_id},${recordObj.setting_id}`;
+    } else if (transTableName === 'compliance_users') {
+        transRecordId.compliance_id = recordObj.compliance_id;
+        transRecordId.user_id = recordObj.user_id;
+        transRecordId.scan_id = recordObj.scan_id;
+        // transRecordId = `${recordObj.compliance_id},${recordObj.user_id},${recordObj.scan_id}`;
+    } else if (transTableName === 'journey_flow_compliances') {
+        transRecordId.journey_flow_id = recordObj.journey_flow_id;
+        transRecordId.compliance_id = recordObj.compliance_id;
+        // transRecordId = `${recordObj.journey_flow_id},${recordObj.compliance_id}`;
+    } else if (transTableName === 'journey_flow_setting') {
+        transRecordId.setting_id = recordObj.setting_id;
+        transRecordId.journey_flow_id = recordObj.journey_flow_id;
+        // transRecordId = `${recordObj.setting_id},${recordObj.journey_flow_id}`;
+    } else if (transTableName === 'journey_flow_user_type') {
+        transRecordId.user_type_id = recordObj.user_type_id;
+        transRecordId.journey_flow_id = recordObj.journey_flow_id;
+        // transRecordId = `${recordObj.user_type_id},${recordObj.journey_flow_id}`;
+    } else if (transTableName === 'journey_setting') {
+       transRecordId.journey_id = recordObj.journey_id;
+       transRecordId.setting_id = recordObj.setting_id;
+       // transRecordId = `${recordObj.journey_id},${recordObj.setting_id}`;
+    } else if (transTableName === 'user_type_setting') {
+        transRecordId.user_type_id = recordObj.user_type_id;
+        transRecordId.setting_id = recordObj.setting_id;
+        // transRecordId = `${recordObj.user_type_id},${recordObj.setting_id}`;
+    } else if (transTableName === 'entity_user') {
+        transRecordId.user_id = recordObj.user_id;
+        transRecordId.entity_id = recordObj.entity_id;
+       // transRecordId = `${recordObj.user_id},${recordObj.entity_id}`;
+    } else  {
+        // transRecordId = `{"id":"${recordObj.id}"}`;
+        transRecordId.id =  recordObj.id
+    }
+    return transRecordId;
+  } catch (ex) {
+    console.log(ex);
+  }
 }
 
 function drawGrid(mainData) {
     let schemaField={};
     let schemaColumn = [];
-
+    
     if(mainData.length>0) {
         schemaField = generateModel(mainData[0]);
         schemaColumn = generateColumns(Object.keys(mainData[0]));
         console.log(`schemaField${JSON.stringify(schemaField)}`)
+        console.log(`schemaColumn${JSON.stringify(schemaColumn)}`)
     }
-    
+    let recordId={};
     var mainDataNextID = mainData.length + 1;
     var dataSource = new kendo.data.DataSource({
         transport: {
@@ -126,7 +188,7 @@ function drawGrid(mainData) {
                 // On success.
                 e.success(mainData);
                 // On failure.
-                //e.error("XHR response", "status code", "error message");
+                // e.error("XHR response", "status code", "error message");
             },
             create: function (e) {
                 // Assign an ID to the new item.
@@ -135,8 +197,12 @@ function drawGrid(mainData) {
                 mainData.push(e.data);
                 // On success.
                 e.success(e.data);
-                console.log('e.data', JSON.stringify(e.data));
+               
                 var dbObj = openDatabase(Database_Name_Trans, Version, Text_Description, Database_Size);
+                const recordId = getRecordId(document.getElementById('tableNameDDL').value,e.data);
+                const dataAfter = Object.assign({}, e.data)  ; 
+                delete dataAfter.rowid; 
+                delete dataAfter.id; 
                 dbObj.transaction(function (tx) {
                     const sql = `insert into trans
                     (
@@ -154,10 +220,10 @@ function drawGrid(mainData) {
                     )
                     values
                     (
-                        '${newGuid()}','all','no','','${e.data.id}','visits','insert','${JSON.stringify(e.data)}', '${guid}',
-                        '${(new Date()).toISOString()}', '${e.data.entity_id}'
+                        '${newGuid()}','all','no','','${JSON.stringify(recordId)}','${document.getElementById('tableNameDDL').value}','insert','${JSON.stringify(dataAfter)}', '${guid}',
+                        '${(new Date()).toISOString()}', '${$('#entityIdTXT').val()}'
                     )`
-                    console.log('sqlsqlsqlsql', JSON.stringify(sql));
+                    console.log('sqlsqlsqlsqltxtxtxt', JSON.stringify(sql));
                     tx.executeSql(sql);
                     var dbObj2 = openDatabase(Database_Name, Version, Text_Description, Database_Size);
                     dbObj2.transaction(function (tx2) {
@@ -174,9 +240,18 @@ function drawGrid(mainData) {
                 //e.error("XHR response", "status code", "error message");
             },
             update: function (e) {
+            var dbObj2 = openDatabase(Database_Name, Version, Text_Description, Database_Size);
+                
+            if(mainData[getIndexById(e.data.rowid)]) {
+                console.log('edit')
                 // Locate item in original datasource and update it.
-                const dataBefore = JSON.stringify(mainData[getIndexById(e.data.id)]); 
-                mainData[getIndexById(e.data.id)] = e.data;
+                const dataBefore = Object.assign({}, mainData[getIndexById(e.data.rowid)]) ; 
+                delete dataBefore.rowid;
+                const dataAfter = Object.assign({}, e.data)  ; 
+                delete dataAfter.rowid; 
+
+                recordId = getRecordId(document.getElementById('tableNameDDL').value,dataBefore);
+                mainData[getIndexById(e.data.rowid)] = e.data;
                 // On success.
                 e.success();
                 var dbObj = openDatabase(Database_Name_Trans, Version, Text_Description, Database_Size);
@@ -202,18 +277,18 @@ function drawGrid(mainData) {
                         'part',
                         'no',
                         '${guid}',
-                        '${e.data.id}',
-                        'visits',
+                        '${JSON.stringify(recordId)}',
+                        '${document.getElementById('tableNameDDL').value}',
                         'update',
-                        '${dataBefore}',                
-                        '${JSON.stringify(e.data)}', 
+                        '${JSON.stringify(dataBefore)}',                
+                        '${JSON.stringify(dataAfter)}', 
                         '${guid}',
                         '${(new Date()).toISOString()}',
-                        '${e.data.entity_id}'
+                        '${$('#entityIdTXT').val()}'
                     )`
                     console.log('sqlsqlsqlsql', JSON.stringify(sql));
                     tx.executeSql(sql);
-                    var dbObj2 = openDatabase(Database_Name, Version, Text_Description, Database_Size);
+                   
                     dbObj2.transaction(function (tx2) {
                         const columnUpdates = [];
                         for (const [key, value] of Object.entries(e.data)) {
@@ -223,22 +298,81 @@ function drawGrid(mainData) {
 
                         tx2.executeSql(`UPDATE ${document.getElementById('tableNameDDL').value}
                             SET ${columnUpdates.join(',')}
-                            WHERE id = '${e.data.id}'`);
+                            WHERE rowid = '${e.data.rowid}'`);
 
                         alert('update at RDB and Added to  TransDB')
                     });
                 });
                 // On failure.
                 // e.error("XHR response", "status code", "error message");
+            } 
+            else {
+                var maxRowId ;
+                var dbObjMax = openDatabase(Database_Name, Version, Text_Description, Database_Size);
+                dbObjMax.transaction( function (txMax) {
+                    txMax.executeSql(`SELECT max(rowid) from ${document.getElementById('tableNameDDL').value}`, [], function (txMax, results) {
+                       maxRowId=  Object.values(results.rows.item(0));  
+                       }, null);
+                   });
+
+               setTimeout(function(){
+                e.data.rowid = parseInt(maxRowId)+1;
+                mainData.push(e.data);
+                // On success.
+                e.success(e.data);
+                recordId = getRecordId(document.getElementById('tableNameDDL').value,e.data);
+                const dataAfter = Object.assign({}, e.data)  ; 
+                delete dataAfter.rowid; 
+                var dbObj = openDatabase(Database_Name_Trans, Version, Text_Description, Database_Size);
+                dbObj.transaction(function (tx) {
+                    const sql = `insert into trans
+                    (
+                        id,
+                        changedProperties,
+                        isSync,
+                        syncTo,
+                        recordId,
+                        tableName,
+                        transactionType,
+                        dataAfter,
+                        changeSource,
+                        creationTime,
+                        entityId
+                    )
+                    values
+                    (
+                        '${newGuid()}','all','no','','${JSON.stringify(recordId)}','${document.getElementById('tableNameDDL').value}','insert','${JSON.stringify(dataAfter)}', '${guid}',
+                        '${(new Date()).toISOString()}', '${$('#entityIdTXT').val()}'
+                    )`
+                   
+                    tx.executeSql(sql);
+                   
+                    dbObj2.transaction(function (tx2) {
+                        tx2.executeSql(`insert into ${document.getElementById('tableNameDDL').value}
+                            (${Object.keys(e.data).map((s) => s).join(',')})
+                            values
+                            ('${Object.values(e.data).map((s) => s).join("','")}')`);
+
+                        alert('Added to both RDB and TransDB')
+                       // loadDbToGrid()
+                    });
+                });
+               },4000)
+               
+            }
             },
             destroy: function (e) {
-                const dataBefore = JSON.stringify(mainData[getIndexById(e.data.id)]); 
+                const dataBefore = JSON.stringify(mainData[getIndexById(e.data.rowid)]); 
                 // Locate item in original datasource and remove it.
-                mainData.splice(getIndexById(e.data.id), 1);
+                const deletedItem = mainData[getIndexById(e.data.rowid)];
+                mainData.splice(getIndexById(e.data.rowid), 1);
                 // On success.
                 e.success();
                 var dbObj = openDatabase(Database_Name_Trans, Version, Text_Description, Database_Size);
                 dbObj.transaction(function (tx) {
+                    
+                    recordId = getRecordId(document.getElementById('tableNameDDL').value,deletedItem)
+                     console.log('ddd'+recordId)
                      const sql = `insert into trans
                      (
                          id,
@@ -259,8 +393,8 @@ function drawGrid(mainData) {
                          'all',
                          'no',
                          '${guid}',
-                         '${e.data.id}',
-                         'visits',
+                         '${JSON.stringify(recordId)}',
+                         '${document.getElementById('tableNameDDL').value}',
                          'delete',
                          '${dataBefore}',                
                          '${guid}',
@@ -271,7 +405,7 @@ function drawGrid(mainData) {
                      tx.executeSql(sql);
                      var dbObj2 = openDatabase(Database_Name, Version, Text_Description, Database_Size);
                      dbObj2.transaction(function (tx2) {
-                         tx2.executeSql(`DELETE FROM  ${document.getElementById('tableNameDDL').value} WHERE id = '${e.data.id}'`);
+                         tx2.executeSql(`DELETE FROM  ${document.getElementById('tableNameDDL').value} WHERE rowid = '${deletedItem.rowid}'`);
                          alert('delete at RDB and Added to  TransDB')
                          //loadDbToGrid()
                      });
@@ -281,16 +415,14 @@ function drawGrid(mainData) {
             }
         },
         error: function (e) {
+
             // Handle data operation error.
-            alert("Status: " + e.status + "; Error message: " + e.errorThrown);
+            console.log("Status: " + e.status + "; Error message: " + e.errorThrown+JSON.stringify(e));
         },
         pageSize: 100,
         batch: false,
         schema: {
-            model: {
-                id: "id",
-                fields: schemaField,
-            }
+            model: schemaField,
         }
     });
     $("#grid").empty();
@@ -299,7 +431,7 @@ function drawGrid(mainData) {
         pageable: true,
         toolbar: ["create"],
         columns: schemaColumn,
-        editable: "inline"
+        editable: "popup"
     });
 }
 
@@ -335,75 +467,66 @@ function doPutActivity() {
         let mainData = [];
         tx.executeSql(`SELECT * from trans where isSync='no' `, [], function (tx, results) {
             const payLoad = [];
+            console.log(`results${results}`)
             var len = results.rows.length, i;
             mainCounter.innerHTML = len;
             console.log('trans len', JSON.stringify(len));
             for (i = 0; i < len; i++) {
 
                 let beforeDataRecord, mainDataRecord ;
-                if(results.rows.item(i).dataAfter) {
-                    mainDataRecord = JSON.parse(results.rows.item(i).dataAfter);
+                console.log(`results.rows.item(i).dataAfter${results.rows.item(i).dataAfter}`)
+                if(results.rows.item(i).dataAfter !== 'undefined' && results.rows.item(i).dataAfter !== null) {
+                    const dataAfterObj = JSON.parse(results.rows.item(i).dataAfter)
 
-                    let date = new Date(mainDataRecord.date);
-                    mainDataRecord.date = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
-
-                    date = new Date(mainDataRecord.signed_out);
-                    mainDataRecord.signed_out = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
-
-                    var d = new Date(mainDataRecord.signed_in);
-                    mainDataRecord.signed_in = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
-
-                    d = new Date(mainDataRecord.signed_out);
-                    mainDataRecord.signed_out = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
-
-                    d = new Date(mainDataRecord.created_at);
-                    mainDataRecord.created_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
-
-                    d = new Date(mainDataRecord.updated_at);
-                    mainDataRecord.updated_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
-
-                    d = new Date(mainDataRecord.deleted_at);
-                    mainDataRecord.deleted_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
+                    for (const key of Object.keys(dataAfterObj)) {
+                       if(dataAfterObj[key]=='') dataAfterObj[key] =null;
                     }
-                if(results.rows.item(i).dataBefore) {
+
+                    for (const key of Object.keys(dataAfterObj)) {
+                        if(dataAfterObj[key]=='null') dataAfterObj[key] =null;
+                     }
+
+                    if(dataAfterObj.created_at)
+                    {
+                        var m = new Date(dataAfterObj.created_at);
+                        dataAfterObj.created_at = m.getUTCFullYear() +"/"+ (m.getUTCMonth()+1) +"/"+ m.getUTCDate() + " " + m.getUTCHours() + ":" + m.getUTCMinutes() + ":" + m.getUTCSeconds();
+                    }
+
+                    if(dataAfterObj.updated_at)
+                    {
+                        var m = new Date(dataAfterObj.updated_at);
+                        dataAfterObj.updated_at = m.getUTCFullYear() +"/"+ (m.getUTCMonth()+1) +"/"+ m.getUTCDate() + " " + m.getUTCHours() + ":" + m.getUTCMinutes() + ":" + m.getUTCSeconds();
+                    }
+
+                    if(dataAfterObj.deleted_at)
+                    {
+                        
+                        var m = new Date(dataAfterObj.deleted_at);
+                        dataAfterObj.deleted_at = m.getUTCFullYear() +"/"+ (m.getUTCMonth()+1) +"/"+ m.getUTCDate() + " " + m.getUTCHours() + ":" + m.getUTCMinutes() + ":" + m.getUTCSeconds();
+                    }
+
+                    mainDataRecord = dataAfterObj; //JSON.parse(results.rows.item(i).dataAfter);
+
+                }
+                console.log(`JSON.parse(results.rows.item(i).dataBefore)${JSON.parse(results.rows.item(i).dataBefore)}`)
+                if(results.rows.item(i).dataBefore !== 'undefined') {
+
                     beforeDataRecord = JSON.parse(results.rows.item(i).dataBefore);
-                    let date = new Date(beforeDataRecord.date);
-
-                    beforeDataRecord.date = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
-
-                    date = new Date(beforeDataRecord.signed_out);
-                    beforeDataRecord.signed_out = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
-
-                    var d = new Date(beforeDataRecord.signed_in);
-                    beforeDataRecord.signed_in = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
-
-                    d = new Date(beforeDataRecord.signed_out);
-                    beforeDataRecord.signed_out = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
-
-                    d = new Date(beforeDataRecord.created_at);
-                    beforeDataRecord.created_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
-
-                    d = new Date(beforeDataRecord.updated_at);
-                    beforeDataRecord.updated_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
-
-                    d = new Date(beforeDataRecord.deleted_at);
-                    beforeDataRecord.deleted_at = [d.getFullYear(), d.getMonth() + 1, d.getDate()].join('/') + ' ' + [d.getHours().toString().padStart(2, '0'), d.getMinutes().toString().padStart(2, '0'), d.getSeconds().toString().padStart(2, '0')].join(':');
-
                 }
                 payLoad.push({
                     "_id": results.rows.item(i).id,
-                    "recordId": results.rows.item(i).recordId,
+                    "recordId": JSON.parse(results.rows.item(i).recordId),
                     "tableName": results.rows.item(i).tableName,
                     "transactionType": results.rows.item(i).transactionType,
                     "dataBefore": beforeDataRecord?beforeDataRecord:{},
                     "dataAfter": mainDataRecord,
-                    "changedProperties": Object.keys(mainDataRecord || beforeDataRecord),
+                    "changedProperties": mainDataRecord? Object.keys(mainDataRecord) :  Object.keys(beforeDataRecord),
                     "changeSource": results.rows.item(i).changeSource,
                     "creationTime": results.rows.item(i).creationTime,
                     "syncTo": [
                         results.rows.item(i).changeSource
                     ],
-                    "entityId": results.rows.item(i).entityId
+                    "entityId": $('#entityIdTXT').val()
                 });
             }
             console.log('payLoad', JSON.stringify(payLoad));
@@ -440,7 +563,7 @@ function loadDbToGrid() {
     var dbObj = openDatabase(Database_Name, Version, Text_Description, Database_Size);
     dbObj.transaction(function (tx) {
         
-        tx.executeSql(`SELECT * from ${document.getElementById('tableNameDDL').value}`, [], function (tx, results) {
+        tx.executeSql(`SELECT rowid,* from ${document.getElementById('tableNameDDL').value}`, [], function (tx, results) {
             var len = results.rows.length, i;
             mainCounter.innerHTML = len;
             console.log('len', JSON.stringify(len));

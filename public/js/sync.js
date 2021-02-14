@@ -18,8 +18,8 @@ function setup(guidParam,tokenParam,entityIdParam){
 // const entityId = '24a74cec-0b4a-3a69-8418-8ebdce386034';
 
 // const socket = io('http://192.168.1.100:3000');
-// socket = io('http://localhost:3000');
-socket = io('https://vp-sync-staging.herokuapp.com/');
+socket = io('http://localhost:3000');
+// const socket = io('https://vp-sync-staging.herokuapp.com/');
 
 socket.on('disconnect', () => {
   mainStatus.innerHTML = `<span style="color:red">Disconnected</span>`;
@@ -104,12 +104,13 @@ socket.on('syncReply', (data, callback) => {
   let createColumn;
   if(data.records) {
   createColumn =  Object.keys(data.records[0]).map((s)=>s);
-    if(createColumn[0]=='id'){
-      createColumn.shift();
-      recreateDBCol = `id unique,${createColumn.join(',')}`
-    } else {
-      recreateDBCol = `${createColumn.join(',')}`
-    }
+  recreateDBCol = `${createColumn.join(',')}`
+    // if(createColumn[0]=='id'){
+    //   createColumn.shift();
+    //   recreateDBCol = `id unique,${createColumn.join(',')}`
+    // } else {
+    //   recreateDBCol = `${createColumn.join(',')}`
+    // }
 }
  
   var dbObj = openDatabase(Database_Name, Version, Text_Description, Database_Size);
@@ -122,7 +123,7 @@ socket.on('syncReply', (data, callback) => {
     console.log('Socket (server-side): date to be saved in my local db:', data);
     const records = [];
     data.records.forEach((element) => {
-      console.log('element', JSON.stringify(element));
+       console.log('element', JSON.stringify(element));
        if(element.deleted_at === null) delete element.deleted_at;
        if(element.compilance_metadata === null) delete element.compilance_metadata;
        if(element.department_id === null) delete element.department_id;
