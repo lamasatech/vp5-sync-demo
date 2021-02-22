@@ -19,7 +19,14 @@ function setup(guidParam,tokenParam,entityIdParam){
 
 // const socket = io('http://192.168.1.100:3000');
   // socket = io('http://localhost:3000');
-socket = io('https://vp-sync-staging.herokuapp.com/');
+// socket = io('https://vp-sync-staging.herokuapp.com/');
+socket = io('https://vp-sync-staging.herokuapp.com/', {
+  query: {
+    entityId, token, guid,
+  },
+});
+
+
 
 socket.on('disconnect', () => {
   mainStatus.innerHTML = `<span style="color:red">Disconnected</span>`;
@@ -39,8 +46,8 @@ socket.on('pushActivity', (data) => {
   var dbObj = openDatabase(Database_Name_Trans, Version, Text_Description, Database_Size);
   dbObj.transaction(function (tx) {
       const log = data.changes;
-      let logSQL = `INSERT INTO trans (id,recordId,tableName,transactionType,dataBefore,dataAfter,changedProperties,changeSource,creationTime,isSync,syncTo,entityId) 
-      values 
+      let logSQL = `INSERT INTO trans (id,recordId,tableName,transactionType,dataBefore,dataAfter,changedProperties,changeSource,creationTime,isSync,syncTo,entityId)
+      values
       (
         '${log.recordId}',
         '${log.recordId}',
@@ -57,17 +64,17 @@ socket.on('pushActivity', (data) => {
         )`
       console.log('logSQL', JSON.stringify(logSQL));
       tx.executeSql(logSQL);
-      
+
   });
   var dbOptObj = openDatabase(Database_Name, Version, Text_Description, Database_Size);
   dbOptObj.transaction(function (tx2) {
-   
+
     const transaction = data.changes.dataAfter ? data.changes.dataAfter :data.changes.dataBefore;
 
     let transactionSQL;
     if(data.changes.transactionType === 'insert')
     {
-    transactionSQL = 
+    transactionSQL =
     `insert into ${data.changes.tableName}
         (${Object.keys(transaction).map((s) => s).join(',')})
         values ('${Object.values(transaction).map((s) => s).join("','")}')`;
@@ -78,7 +85,7 @@ socket.on('pushActivity', (data) => {
       }
       columnUpdates.shift();
 
-      transactionSQL = 
+      transactionSQL =
       `UPDATE ${data.changes.tableName}
       SET  ${columnUpdates.join(',')}
       WHERE id = '${transaction.id}'`;
@@ -112,7 +119,7 @@ socket.on('syncReply', (data, callback) => {
     //   recreateDBCol = `${createColumn.join(',')}`
     // }
 }
- 
+
   var dbObj = openDatabase(Database_Name, Version, Text_Description, Database_Size);
   dbObj.transaction(function (tx2) {
     tx2.executeSql(`CREATE TABLE IF NOT EXISTS ${data.table} (${recreateDBCol})`);
@@ -130,7 +137,7 @@ socket.on('syncReply', (data, callback) => {
       tx.executeSql(`insert into ${data.table}
           (${Object.keys(element).map((s) => s).join(',')})
           values ('${Object.values(element).map((s) => typeof(s)=== 'object'?JSON.stringify(s):s).join("','")}')`);
-          
+
           console.log(`insert into ${data.table}
           (${Object.keys(element).map((s) => s).join(',')})
           values ('${Object.values(element).map((s) => typeof(s)=== 'object'?JSON.stringify(s):s).join("','")}')`)
